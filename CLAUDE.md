@@ -16,6 +16,7 @@
 - Keep room IDs exactly `2301`, `2302`, `2303`, `2305`, `2306`, `2307`, `2309`, and `2310` unless the product scope is explicitly changed.
 - A single authorized field-evidence room may use `field_test_mode: true`; keep it to exactly one room and never report that result as acceptance of the production eight-room set.
 - `local_pc` is a degraded evidence source: it may use bounded ICMP/ARP and SSDP, but must never be described as a complete client list, per-device traffic, TV power, playback, HDMI, or viewer evidence.
+- Generic type labels (`手机`, `平板`, `个人电脑`, `未知设备`) classify a device but do not authorize it or suppress unknown-device events; only explicit allowed/fixed/TV labels may do that.
 
 ## Verification
 
