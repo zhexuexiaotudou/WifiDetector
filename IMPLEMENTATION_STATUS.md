@@ -12,7 +12,7 @@
 | Stage 4 真实适配器 | 阻塞 | 缺少授权现场的脱敏页面/API 证据 |
 | Stage 5 校准与判定 | 部分实现 | 透明规则与校准统计已实现，现场基线缺失 |
 | Stage 6 整夜可靠性 | 300 轮加速 soak 通过；现场 8 小时仍待执行 | 2400 样本、SQLite 完整、事件有界、热身后增长 5534 B |
-| Stage 7 交付 | 已完成 | PR #1 已合并至 `main`（`376e89d`）；GitHub Actions CI、wheel 构建与 Playwright 浏览器验收通过 |
+| Stage 7 交付 | 已完成 | 现场真值修正 PR #5 已合并至 `main`（`57cc4c0`）；GitHub Actions CI、wheel 构建与 Playwright 浏览器验收通过 |
 
 真实能力没有被虚构：`H10e31Adapter.probe()` 在无证据时返回全部 `false`。
 
