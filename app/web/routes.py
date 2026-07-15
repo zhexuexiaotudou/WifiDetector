@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, Response
 from fastapi.templating import Jinja2Templates
 
-from app.config import ROOM_IDS, Settings
+from app.config import Settings
 from app.scheduler.health import HEALTH
 from app.scheduler.rotating_scanner import RotatingScanner
 from app.storage.repository import Repository
@@ -32,18 +32,25 @@ def _templates(request: Request) -> Jinja2Templates:
     return cast(Jinja2Templates, request.app.state.templates)
 
 
+def _room_ids(request: Request) -> tuple[str, ...]:
+    return tuple(room.room_id for room in _settings(request).rooms if room.enabled)
+
+
 @router.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request) -> Response:
     return _templates(request).TemplateResponse(
         request=request,
         name="dashboard.html",
-        context={"room_ids": ROOM_IDS},
+        context={
+            "room_ids": _room_ids(request),
+            "mock_mode": _settings(request).app.mock_mode,
+        },
     )
 
 
 @router.get("/rooms/{room_id}", response_class=HTMLResponse)
 async def room_page(request: Request, room_id: str) -> Response:
-    if room_id not in ROOM_IDS:
+    if room_id not in _room_ids(request):
         raise HTTPException(404, "未知房间")
     return _templates(request).TemplateResponse(
         request=request,
@@ -65,12 +72,11 @@ async def settings_page(request: Request) -> Response:
 @router.get("/api/health")
 async def health(request: Request) -> dict[str, object]:
     repository = _repository(request)
-    rooms = repository.latest_rooms()
     events = repository.recent_events(limit=500)
     return {
         **HEALTH.as_dict(),
         "server_time": datetime.now(UTC).isoformat(),
-        "room_count": len(rooms),
+        "room_count": len(_room_ids(request)),
         "pending_events": sum(1 for event in events if not event.get("review_status")),
         "system_faults": sum(1 for event in events if event["severity"] == "system"),
         "mode": "mock" if _settings(request).app.mock_mode else "field",
@@ -80,7 +86,10 @@ async def health(request: Request) -> dict[str, object]:
 @router.get("/api/rooms")
 async def rooms(request: Request) -> list[dict[str, object]]:
     latest = {room["room_id"]: room for room in _repository(request).latest_rooms()}
-    return [latest.get(room_id, {"room_id": room_id, "status": "数据不足"}) for room_id in ROOM_IDS]
+    return [
+        latest.get(room_id, {"room_id": room_id, "status": "数据不足"})
+        for room_id in _room_ids(request)
+    ]
 
 
 @router.get("/api/rooms/{room_id}")
@@ -112,7 +121,7 @@ async def review_event(request: Request, event_id: int, body: ReviewRequest) -> 
 
 @router.post("/api/allowlist")
 async def update_allowlist(request: Request, body: AllowlistRequest) -> dict[str, bool]:
-    if body.room_id not in ROOM_IDS:
+    if body.room_id not in _room_ids(request):
         raise HTTPException(400, "未知房间")
     if body.label not in {"海信电视", "酒店固定设备", "允许设备", "未知设备"}:
         raise HTTPException(400, "无效设备标签")

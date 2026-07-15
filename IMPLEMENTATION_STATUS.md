@@ -8,9 +8,12 @@
 | Stage 1 Mock 闭环 | 已完成 | 8 房间、SQLite、事件、Web、导出；真实 HTTP 验收通过 |
 | Stage 2 Windows Wi‑Fi | 代码与本机诊断完成，现场 Gate A 未通过 | 当前机器缺少 8 个目标 profile |
 | Stage 3 H10e-31 发现 | 代码完成，待现场运行 | 可见 Edge、元数据-only 脱敏证据；无证据时能力全 false |
+| Stage 3B 电脑本地发现 | 2312 实机通过 | 无网关账号的 ICMP/ARP + SSDP 降级路径；持续发现 1 个匿名媒体服务设备，不提供完整客户端表、逐设备流量或亮屏结论 |
 | Stage 4 真实适配器 | 阻塞 | 缺少授权现场的脱敏页面/API 证据 |
 | Stage 5 校准与判定 | 部分实现 | 透明规则与校准统计已实现，现场基线缺失 |
 | Stage 6 整夜可靠性 | 300 轮加速 soak 通过；现场 8 小时仍待执行 | 2400 样本、SQLite 完整、事件有界、热身后增长 5534 B |
-| Stage 7 交付 | 本地交付完成，GitHub 发布进行中 | 文档、启动脚本、CI 与 Playwright 浏览器验收已完成 |
+| Stage 7 交付 | 已完成 | PR #1 已合并至 `main`（`376e89d`）；GitHub Actions CI、wheel 构建与 Playwright 浏览器验收通过 |
 
 真实能力没有被虚构：`H10e31Adapter.probe()` 在无证据时返回全部 `false`。
+
+本项目的部署目标是授权现场的 Windows 单机，不是公网服务器。远程服务器部署不适用；当前开发机已验证本地服务与打包产物，但真实现场 Gate A、H10e-31 证据采集和连续 8 小时运行仍需在目标网络完成。

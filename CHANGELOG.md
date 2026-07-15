@@ -11,3 +11,7 @@
 - 修复 PowerShell 安装脚本对外部命令非零退出码不敏感的问题。
 - 为 soak 增加 SQLite 完整性、事件上限与 tracemalloc 内存证据。
 - 根据 Playwright 实机验收增加本地 favicon、单轮扫描状态复位和首页 1 秒实时短轮询。
+- 自动加载项目根目录的本机 `.env`（不覆盖父进程变量），并让 `DORM_MONITOR_LOG_LEVEL` 控制日志级别。
+- 同步项目开发规则、API/SQLite 架构、完整命令与环境变量文档。
+- 增加无需网关账号的 `local_pc` 数据源：受限 ICMP/ARP 邻居发现、SSDP 媒体服务证据、动态单房间 UI 与严格降级结论。
+- 修复 `app.cli run` 在异步命令入口中嵌套事件循环而无法启动 Uvicorn 的问题。

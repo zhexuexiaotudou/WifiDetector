@@ -10,6 +10,8 @@ from app.config import Settings
 from app.detection.events import detect_events
 from app.models.domain import RouterSnapshot
 from app.routers.base import RouterAdapter
+from app.routers.h10e31 import H10e31Adapter
+from app.routers.local_pc import LocalPcAdapter
 from app.routers.mock import MockAdapter
 from app.scheduler.health import HEALTH
 from app.security.anonymize import DeviceAnonymizer
@@ -29,9 +31,19 @@ class RotatingScanner:
     ) -> None:
         self.settings = settings
         self.repository = repository
-        self.adapter_factory = adapter_factory or (
-            lambda room_id, cycle: MockAdapter(room_id, cycle)
-        )
+        if adapter_factory is not None:
+            self.adapter_factory = adapter_factory
+        elif settings.app.mock_mode:
+            self.adapter_factory = lambda room_id, cycle: MockAdapter(room_id, cycle)
+        elif settings.app.field_data_source == "local_pc":
+            rooms = {room.room_id: room for room in settings.rooms}
+            self.adapter_factory = lambda room_id, _cycle: LocalPcAdapter(
+                room_id,
+                rooms[room_id].ssid,
+                ping_sweep=settings.app.local_ping_sweep,
+            )
+        else:
+            self.adapter_factory = lambda room_id, _cycle: H10e31Adapter(room_id)
         self.anonymizer = DeviceAnonymizer(salt_file or repository.path.parent / ".device_hmac_key")
         self._stop = asyncio.Event()
 
