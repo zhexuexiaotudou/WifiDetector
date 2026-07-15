@@ -1,0 +1,24 @@
+app:
+  dashboard_host: "127.0.0.1"
+  dashboard_port: 8765
+  retention_hours: 72
+  scheduler_enabled: true
+  mock_mode: false
+  field_data_source: "local_pc"
+  local_ping_sweep: true
+  per_room_connect_timeout_seconds: 18
+  per_room_scan_timeout_seconds: 20
+  inter_room_pause_seconds: 2
+  cycle_pause_seconds: 30
+  max_sample_age_minutes: 6
+  unknown_persistent_minutes: 10
+
+rooms:
+  - {room_id: "2301", ssid: "2301", wifi_profile: "2301", router_url: "http://192.168.1.1", expected_bssid: null, enabled: true}
+  - {room_id: "2302", ssid: "2302", wifi_profile: "2302", router_url: "http://192.168.1.1", expected_bssid: null, enabled: true}
+  - {room_id: "2303", ssid: "2303", wifi_profile: "2303", router_url: "http://192.168.1.1", expected_bssid: null, enabled: true}
+  - {room_id: "2305", ssid: "2305", wifi_profile: "2305", router_url: "http://192.168.1.1", expected_bssid: null, enabled: true}
+  - {room_id: "2306", ssid: "2306", wifi_profile: "2306", router_url: "http://192.168.1.1", expected_bssid: null, enabled: true}
+  - {room_id: "2307", ssid: "2307", wifi_profile: "2307", router_url: "http://192.168.1.1", expected_bssid: null, enabled: true}
+  - {room_id: "2309", ssid: "2309", wifi_profile: "2309", router_url: "http://192.168.1.1", expected_bssid: null, enabled: true}
+  - {room_id: "2310", ssid: "2310", wifi_profile: "2310", router_url: "http://192.168.1.1", expected_bssid: null, enabled: true}

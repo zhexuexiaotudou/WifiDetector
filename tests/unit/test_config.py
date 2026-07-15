@@ -47,6 +47,14 @@ def test_single_authorized_field_room_can_use_a_different_ssid() -> None:
     assert [(room.room_id, room.ssid) for room in settings.rooms] == [("2312", "CMCC-2312")]
 
 
+def test_eight_room_pc_local_configuration_is_valid() -> None:
+    settings = load_settings(Path("config/rooms.pc-local.example.yaml"))
+    assert settings.app.mock_mode is False
+    assert settings.app.field_data_source == "local_pc"
+    assert settings.app.local_ping_sweep is True
+    assert len(settings.rooms) == 8
+
+
 def test_non_local_dashboard_is_rejected(tmp_path: Path) -> None:
     path = tmp_path / "rooms.yaml"
     original = Path("config/rooms.example.yaml").read_text(encoding="utf-8")

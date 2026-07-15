@@ -52,6 +52,20 @@ def test_pc_local_media_advertisement_is_only_visibility_evidence() -> None:
     assert "不等于亮屏" in "".join(events[0].limitations)
 
 
+def test_device_type_label_does_not_silence_unknown_device_event() -> None:
+    snapshot = RouterSnapshot(
+        room_id="2301",
+        clients=[ClientSnapshot(mac="opaque", connection_type="wifi", rx_rate_bps=1000)],
+    )
+    events = detect_events(
+        snapshot,
+        {"opaque": "dev_phone"},
+        {"dev_phone": "手机"},
+        None,
+    )
+    assert [event.event_type for event in events] == ["unknown_device_active"]
+
+
 def test_baseline_summary() -> None:
     result = summarize_baseline([1, 2, 3, 4, 5])
     assert result["median"] == 3

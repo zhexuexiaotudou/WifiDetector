@@ -7,11 +7,12 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from app.config import Settings
+from app.detection.device_profiles import derive_type_hint
 from app.detection.events import detect_events
 from app.models.domain import RouterSnapshot
 from app.routers.base import RouterAdapter
 from app.routers.h10e31 import H10e31Adapter
-from app.routers.local_pc import LocalPcAdapter
+from app.routers.local_pc import LocalDiscoveryError, LocalPcAdapter
 from app.routers.mock import MockAdapter
 from app.scheduler.health import HEALTH
 from app.security.anonymize import DeviceAnonymizer
@@ -40,6 +41,8 @@ class RotatingScanner:
             self.adapter_factory = lambda room_id, _cycle: LocalPcAdapter(
                 room_id,
                 rooms[room_id].ssid,
+                wifi_profile=rooms[room_id].wifi_profile,
+                expected_bssid=rooms[room_id].expected_bssid,
                 ping_sweep=settings.app.local_ping_sweep,
             )
         else:
@@ -101,9 +104,15 @@ class RotatingScanner:
             try:
                 event_ids = await self.scan_room(room.room_id, HEALTH.current_cycle)
                 results[room.room_id] = {"ok": True, "event_ids": event_ids}
+                self.repository.record_scan_status(room.room_id, True, None)
             except Exception as exc:  # isolated room failure is an explicit reliability boundary
-                LOGGER.exception("room scan failed: %s", room.room_id)
-                results[room.room_id] = {"ok": False, "error": type(exc).__name__}
+                error_code = str(getattr(exc, "code", type(exc).__name__))
+                if isinstance(exc, LocalDiscoveryError):
+                    LOGGER.warning("room scan unavailable: %s (%s)", room.room_id, error_code)
+                else:
+                    LOGGER.exception("room scan failed: %s", room.room_id)
+                results[room.room_id] = {"ok": False, "error": error_code}
+                self.repository.record_scan_status(room.room_id, False, error_code)
             HEALTH.rooms_completed += 1
             HEALTH.touch()
             if self.settings.app.inter_room_pause_seconds:
@@ -158,6 +167,7 @@ class RotatingScanner:
                     "tx_rate_bps": client.tx_rate_bps,
                     "online_seconds": client.online_seconds,
                     "is_monitor_pc": is_monitor,
+                    **derive_type_hint(client),
                 }
             )
         capabilities = {

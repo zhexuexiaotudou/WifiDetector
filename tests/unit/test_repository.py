@@ -47,3 +47,11 @@ def test_open_event_is_refreshed_not_duplicated(tmp_path: Path) -> None:
     assert repository.close_absent_events("2305", []) == 1
     third = repository.add_event(event)
     assert third != first
+
+
+def test_latest_scan_status_exposes_room_failure_without_sensitive_detail(tmp_path: Path) -> None:
+    repository = Repository(tmp_path / "data.db")
+    repository.record_scan_status("2301", False, "wifi_profile_missing")
+    status = repository.latest_scan_statuses()["2301"]
+    assert status["ok"] is False
+    assert status["error_code"] == "wifi_profile_missing"
