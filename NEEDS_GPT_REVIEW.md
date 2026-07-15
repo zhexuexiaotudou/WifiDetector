@@ -9,7 +9,7 @@
 - `scripts/setup_windows.ps1`：依赖安装成功；失败退出码保护已验证。
 - `ruff check .`：通过。
 - `mypy app`：严格模式通过，42 个源码文件无问题。
-- `pytest -q`：36 项通过；仅有上游 TestClient 弃用提示。
+- `pytest -q`：39 项通过；仅有上游 TestClient 弃用提示。
 - `py -m app.cli doctor`：配置、数据库、本机监听、Edge、Wi‑Fi 与 Playwright 可用；8 个目标 profile 全缺。
 - `connect-test --room 2301`：安全返回 `wifi_profile_missing`，没有尝试密码或切换网络。
 - `probe --room 2301`：17 项 H10e-31 能力全部为 `false`。
