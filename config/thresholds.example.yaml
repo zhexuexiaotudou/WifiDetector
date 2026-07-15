@@ -1,0 +1,4 @@
+# 阈值必须来自授权现场的校准样本；以下仅定义结构，不含视频速率猜测。
+minimum_consecutive_samples: 2
+unknown_persistent_minutes: 10
+rooms: {}

@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero">
+  <div><p class="eyebrow">AUTHORIZED LOCAL OBSERVATION</p><h1>夜间态势总览</h1><p>集中查看 8 个房间的最新网关证据，所有异常均进入人工复核。</p></div>
+  <button id="scanButton" class="primary">立即运行一轮模拟扫描</button>
+</section>
+<section class="metrics" id="metrics">
+  <article><span>运行状态</span><strong id="running">载入中</strong></article>
+  <article><span>当前房间</span><strong id="currentRoom">—</strong></article>
+  <article><span>本轮进度</span><strong id="progress">0 / 8</strong></article>
+  <article><span>待复核事件</span><strong id="pending">0</strong></article>
+  <article><span>系统故障</span><strong id="faults">0</strong></article>
+</section>
+<section class="section-heading"><div><p class="eyebrow">ROOMS</p><h2>房间状态</h2></div><span id="lastUpdated">尚未采样</span></section>
+<section class="room-grid" id="roomGrid">
+{% for room_id in room_ids %}<article class="room-card skeleton" data-room="{{ room_id }}"><div class="room-top"><h3>{{ room_id }}</h3><span class="status">数据不足</span></div><p>等待首个样本</p></article>{% endfor %}
+</section>
+<aside class="limitation"><strong>能力边界</strong><span>不连接房间 Wi‑Fi 的 4G/5G 设备、离线设备与无网关证据的 HDMI 亮屏状态无法可靠发现。</span></aside>
+{% endblock %}

@@ -1,0 +1,23 @@
+from __future__ import annotations
+
+from typing import Protocol
+
+from app.models.domain import ConnectionResult, VisibleNetwork, WifiConnection
+
+
+class WifiManager(Protocol):
+    async def list_profiles(self) -> list[str]: ...
+
+    async def scan_networks(self) -> list[VisibleNetwork]: ...
+
+    async def connect(
+        self, profile_name: str, expected_ssid: str, expected_bssid: str | None = None
+    ) -> ConnectionResult: ...
+
+    async def disconnect(self) -> None: ...
+
+    async def current_connection(self) -> WifiConnection | None: ...
+
+    async def current_ipv4(self) -> str | None: ...
+
+    async def default_gateway(self) -> str | None: ...

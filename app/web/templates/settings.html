@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}设置 · 宿舍夜间监测{% endblock %}
+{% block content %}
+<section class="hero compact"><div><p class="eyebrow">LOCAL SETTINGS</p><h1>运行与隐私</h1><p>默认仅监听 127.0.0.1，数据保留 72 小时。</p></div></section>
+<section class="settings-grid">
+  <article class="panel"><h2>数据保留</h2><p>清理过期样本和事件，不删除白名单。</p><button id="purgeButton" class="secondary">执行 72 小时清理</button></article>
+  <article class="panel danger"><h2>一键清空</h2><p>删除本地样本和事件。操作前需输入确认短语。</p><input id="clearPhrase" placeholder="清空本地监测数据"><button id="clearButton">清空数据</button></article>
+  <article class="panel"><h2>现场发现</h2><p>使用 <code>py -m app.cli discover --room 2301</code> 打开独立 Edge 会话。不得提交原始 HAR、Cookie 或截图。</p></article>
+</section>
+{% endblock %}
