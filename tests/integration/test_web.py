@@ -12,11 +12,22 @@ def test_dashboard_and_api(tmp_path: Path) -> None:
     with TestClient(create_app(settings, tmp_path / "web.db")) as client:
         response = client.get("/")
         assert response.status_code == 200
-        assert "夜间态势总览" in response.text
+        assert "每台可见设备" in response.text
         scan = client.post("/api/scan-cycle")
         assert scan.status_code == 200
         rooms = client.get("/api/rooms").json()
         assert len(rooms) == 8
+        assert all("devices" in room for room in rooms)
+        assert any(
+            device["probable_type"] == "电视"
+            for room in rooms
+            for device in room["devices"]
+        )
+        room_page = client.get("/rooms/2307")
+        assert "设备台账" in room_page.text
+        detail = client.get("/api/rooms/2307").json()
+        assert detail["devices"]
+        assert all("activity_label" in device for device in detail["devices"])
         assert client.get("/api/health").json()["mode"] == "mock"
 
 

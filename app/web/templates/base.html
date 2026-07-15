@@ -3,17 +3,19 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="授权宿舍网络的本机房间设备可见性与人工复核面板">
   <title>{% block title %}宿舍夜间监测{% endblock %}</title>
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/static/app.css">
 </head>
 <body>
+  <a class="skip-link" href="#main-content">跳到主要内容</a>
   <header class="topbar">
-    <a class="brand" href="/"><span class="brand-mark">WD</span><span>宿舍夜间监测</span></a>
-    <nav><a href="/">总览</a><a href="/events">待复核</a><a href="/settings">设置</a></nav>
+    <a class="brand" href="/"><span class="brand-mark">WD</span><span><b>房间设备台账</b><small>夜间只读观测</small></span></a>
+    <nav aria-label="主导航"><a class="{% if request.url.path == '/' %}active{% endif %}" href="/">房间总览</a><a class="{% if request.url.path == '/events' %}active{% endif %}" href="/events">待复核</a><a class="{% if request.url.path == '/settings' %}active{% endif %}" href="/settings">设置</a></nav>
     <span class="privacy-badge">仅本机 · 只读采集</span>
   </header>
-  <main>{% block content %}{% endblock %}</main>
+  <main id="main-content">{% block content %}{% endblock %}</main>
   <footer>本系统不自动认定违规。联网活动、电视在线和具体人员使用之间不存在必然等价关系。</footer>
   <script src="/static/app.js" defer></script>
   {% block scripts %}{% endblock %}

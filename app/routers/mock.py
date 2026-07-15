@@ -51,6 +51,26 @@ class MockAdapter:
                 online_seconds=self.cycle * 180,
             )
         ]
+        room_devices = {
+            "2301": ClientSnapshot(
+                mac="02:00:00:00:01:11", hostname="iphone-mobile", connection_type="wifi",
+                rx_rate_bps=180_000, tx_rate_bps=24_000, online_seconds=self.cycle * 180,
+            ),
+            "2302": ClientSnapshot(
+                mac="02:00:00:00:02:12", hostname="ipad-tablet", connection_type="wifi",
+                rx_rate_bps=42_000, tx_rate_bps=8_000, online_seconds=self.cycle * 180,
+            ),
+            "2303": ClientSnapshot(
+                mac="02:00:00:00:03:13", hostname="windows-laptop", connection_type="wifi",
+                rx_rate_bps=6_000, tx_rate_bps=2_000, online_seconds=self.cycle * 180,
+            ),
+            "2306": ClientSnapshot(
+                mac="02:00:00:00:06:16", hostname="mobile-phone", connection_type="wifi",
+                rx_rate_bps=0, tx_rate_bps=0, online_seconds=self.cycle * 180,
+            ),
+        }
+        if self.room_id in room_devices:
+            clients.append(room_devices[self.room_id])
         warnings: list[str] = []
         iptv = None
         if self.room_id == "2305":

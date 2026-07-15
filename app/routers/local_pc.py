@@ -10,6 +10,12 @@ from dataclasses import dataclass
 from app.models.domain import ClientSnapshot, RouterCapabilities, RouterSnapshot
 from app.wifi.windows_netsh import WindowsWifiManager
 
+
+class LocalDiscoveryError(RuntimeError):
+    def __init__(self, code: str) -> None:
+        super().__init__(code)
+        self.code = code
+
 ARP_ENTRY_RE = re.compile(
     r"^\s*(?P<ip>\d{1,3}(?:\.\d{1,3}){3})\s+"
     r"(?P<mac>[0-9a-f]{2}(?:[-:][0-9a-f]{2}){5})\s+",
@@ -109,11 +115,15 @@ class LocalPcAdapter:
         room_id: str,
         expected_ssid: str,
         *,
+        wifi_profile: str | None = None,
+        expected_bssid: str | None = None,
         ping_sweep: bool = False,
         ssdp_timeout_seconds: float = 2.0,
     ) -> None:
         self.room_id = room_id
         self.expected_ssid = expected_ssid
+        self.wifi_profile = wifi_profile or expected_ssid
+        self.expected_bssid = expected_bssid
         self.ping_sweep = ping_sweep
         self.ssdp_timeout_seconds = ssdp_timeout_seconds
         self.wifi = WindowsWifiManager()
@@ -124,13 +134,13 @@ class LocalPcAdapter:
         return RouterCapabilities(local_neighbor_discovery=True, ssdp_discovery=True)
 
     async def login(self) -> None:
-        connection = await self.wifi.current_connection()
-        if connection is None or connection.ssid != self.expected_ssid:
-            raise RuntimeError(f"本机未连接已授权 SSID：{self.expected_ssid}")
-        self.local_ipv4 = await self.wifi.current_ipv4()
-        self.gateway = await self.wifi.default_gateway()
-        if not self.local_ipv4 or self.gateway != "192.168.1.1":
-            raise RuntimeError("本机 IPv4 或默认网关不满足现场 Gate A")
+        result = await self.wifi.connect(
+            self.wifi_profile, self.expected_ssid, self.expected_bssid
+        )
+        if not result.ok:
+            raise LocalDiscoveryError(result.reason)
+        self.local_ipv4 = result.local_ipv4
+        self.gateway = result.gateway
 
     async def fetch_snapshot(self) -> RouterSnapshot:
         if not self.local_ipv4 or not self.gateway:

@@ -12,6 +12,7 @@ def detect_events(
 ) -> list[DetectionEvent]:
     events: list[DetectionEvent] = []
     seen_counts = seen_counts or {}
+    authorized_labels = {"海信电视", "酒店固定设备", "允许设备"}
     if not snapshot.router_reachable:
         events.append(
             DetectionEvent(
@@ -33,9 +34,10 @@ def detect_events(
         if monitor_ipv4 and client.ip == monitor_ipv4:
             continue
         label = allowlist.get(device_id)
+        is_authorized = label in authorized_labels
         active = bool((client.rx_rate_bps or 0) + (client.tx_rate_bps or 0))
         local_media = client.connection_type == "ssdp-media-device"
-        if not label:
+        if not is_authorized:
             if local_media:
                 events.append(
                     DetectionEvent(

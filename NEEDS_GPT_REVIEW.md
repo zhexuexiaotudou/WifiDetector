@@ -8,8 +8,8 @@
 
 - `scripts/setup_windows.ps1`：依赖安装成功；失败退出码保护已验证。
 - `ruff check .`：通过。
-- `mypy app`：严格模式通过，40 个源码文件无问题。
-- `pytest -q`：19 项通过；仅有上游 TestClient 弃用提示。
+- `mypy app`：严格模式通过，42 个源码文件无问题。
+- `pytest -q`：36 项通过；仅有上游 TestClient 弃用提示。
 - `py -m app.cli doctor`：配置、数据库、本机监听、Edge、Wi‑Fi 与 Playwright 可用；8 个目标 profile 全缺。
 - `connect-test --room 2301`：安全返回 `wifi_profile_missing`，没有尝试密码或切换网络。
 - `probe --room 2301`：17 项 H10e-31 能力全部为 `false`。
@@ -17,6 +17,7 @@
 - `soak --cycles 300`：2400 样本、4 个有界开放事件、SQLite 完整，热身后净增长 5534 字节。
 - 本地 HTTP：`/`、`/api/health`、`POST /api/scan-cycle`、`/api/rooms` 均返回 200，8 房间可达。
 - Playwright 浏览器视觉检查：通过；扫描中实时显示当前房间和进度，结束恢复待命，事件页与房间详情页正常，控制台 0 错误/0 警告。
+- 房间设备台账检查：Ruff、严格 MyPy、36 项 Pytest 和 JavaScript 语法检查通过；八房间总览与 2307 详情在 Edge 中完成视觉验收，人工类型修正可立即覆盖规则推断。
 
 ## 精确阻塞
 
@@ -39,3 +40,5 @@
 ## 2312 无网关权限降级结果
 
 2026-07-15 已在用户授权的 2312 网络完成电脑本地模式实测。Gate A 通过，多轮 ICMP/ARP + SSDP 发现持续看到一个匿名媒体服务设备，服务类型包含 `MediaRenderer` 与 `AVTransport`。这只证明媒体设备在局域网中可见，不解除真实适配器阻塞，也不证明电视亮屏、播放或有人观看。详细证据见 `artifacts/test_reports/pc_local_field_verification_2026-07-15.md`。
+
+同日设备画像页面在新样本上将该匿名媒体设备显示为“电视/媒体设备”候选，类型证据 82%；使用情况显示“媒体服务可见，使用未知”，证据强度 35%。正式八房间总览已经具备代码和演示闭环，但当前电脑没有八个目标 profile，不能将 2312 单房间结果扩展为八房间现场验收。

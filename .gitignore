@@ -7,6 +7,7 @@ __pycache__/
 .coverage
 htmlcov/
 .playwright-cli/
+output/playwright/
 .env
 *.db
 *.db-shm

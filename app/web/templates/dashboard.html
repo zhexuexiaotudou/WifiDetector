@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% block content %}
 <section class="hero">
-  <div><p class="eyebrow">AUTHORIZED LOCAL OBSERVATION</p><h1>夜间态势总览</h1><p>集中查看 {{ room_ids|length }} 个已配置房间的最新可见证据，所有异常均进入人工复核。</p></div>
+  <div><p class="eyebrow">ROOM DEVICE OBSERVATORY</p><h1>每个房间，<br><em>每台可见设备</em></h1><p>集中查看 {{ room_ids|length }} 个已配置房间的匿名设备、最近使用迹象和设备类型概率。概率来自可解释的网络元数据，不用于自动认定人员或违规。</p></div>
   {% set idle_label = "立即运行一轮模拟扫描" if mock_mode else "立即运行一轮本机发现" %}
-  <button id="scanButton" class="primary" data-idle-label="{{ idle_label }}">{{ idle_label }}</button>
+  <div class="hero-action"><span class="mode-flag">{{ "演示数据" if mock_mode else "真实本机数据" }}</span><button id="scanButton" class="primary" data-idle-label="{{ idle_label }}">{{ idle_label }}</button></div>
 </section>
 <section class="metrics" id="metrics">
   <article><span>运行状态</span><strong id="running">载入中</strong></article>
@@ -12,9 +12,10 @@
   <article><span>待复核事件</span><strong id="pending">0</strong></article>
   <article><span>系统故障</span><strong id="faults">0</strong></article>
 </section>
-<section class="section-heading"><div><p class="eyebrow">ROOMS</p><h2>房间状态</h2></div><span id="lastUpdated">尚未采样</span></section>
+<section class="section-heading"><div><p class="eyebrow">ROOM INVENTORY</p><h2>房间设备一览</h2></div><span id="lastUpdated">尚未采样</span></section>
 <section class="room-grid" id="roomGrid">
 {% for room_id in room_ids %}<article class="room-card skeleton" data-room="{{ room_id }}"><div class="room-top"><h3>{{ room_id }}</h3><span class="status">数据不足</span></div><p>等待首个样本</p></article>{% endfor %}
 </section>
-<aside class="limitation"><strong>能力边界</strong><span>不连接房间 Wi‑Fi 的 4G/5G 设备、离线设备与无网关证据的 HDMI 亮屏状态无法可靠发现。</span></aside>
+<section class="confidence-legend" aria-label="置信度说明"><span><i class="confidence-dot high"></i>80% 以上：有明确设备服务或人工标记</span><span><i class="confidence-dot medium"></i>50–79%：存在部分元数据</span><span><i class="confidence-dot low"></i>低于 50%：只能看到网络邻居，类型不确定</span></section>
+<aside class="limitation"><strong>必须知道</strong><span>单电脑只能依次连接各房间 Wi‑Fi；未保存配置的房间不会产生真实数据。在线可见不等于有人正在使用，4G/5G、离线设备和无网络证据的 HDMI 亮屏无法发现。</span></aside>
 {% endblock %}

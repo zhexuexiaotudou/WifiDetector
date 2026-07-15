@@ -70,6 +70,12 @@ class Repository:
                     key TEXT PRIMARY KEY,
                     value TEXT NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS scan_status (
+                    room_id TEXT PRIMARY KEY,
+                    attempted_at TEXT NOT NULL,
+                    ok INTEGER NOT NULL,
+                    error_code TEXT
+                );
                 """
             )
             self._migrate_events(db)
@@ -206,6 +212,36 @@ class Repository:
                 (room_id,),
             ).fetchone()
         return self._sample_row(row) if row else None
+
+    def room_samples(self, room_id: str) -> list[dict[str, Any]]:
+        with self.connection() as db:
+            rows = db.execute(
+                "SELECT * FROM samples WHERE room_id=? ORDER BY captured_at ASC", (room_id,)
+            ).fetchall()
+        return [self._sample_row(row) for row in rows]
+
+    def record_scan_status(self, room_id: str, ok: bool, error_code: str | None) -> None:
+        with self.connection() as db:
+            db.execute(
+                """INSERT INTO scan_status(room_id,attempted_at,ok,error_code) VALUES(?,?,?,?)
+                ON CONFLICT(room_id) DO UPDATE SET attempted_at=excluded.attempted_at,
+                ok=excluded.ok,error_code=excluded.error_code""",
+                (room_id, datetime.now(UTC).isoformat(), int(ok), error_code),
+            )
+
+    def latest_scan_statuses(self) -> dict[str, dict[str, object]]:
+        with self.connection() as db:
+            rows = db.execute(
+                "SELECT room_id,attempted_at,ok,error_code FROM scan_status ORDER BY room_id"
+            ).fetchall()
+        return {
+            str(row["room_id"]): {
+                "attempted_at": row["attempted_at"],
+                "ok": bool(row["ok"]),
+                "error_code": row["error_code"],
+            }
+            for row in rows
+        }
 
     def recent_events(self, limit: int = 100, room_id: str | None = None) -> list[dict[str, Any]]:
         query = "SELECT * FROM events"

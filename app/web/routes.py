@@ -8,6 +8,7 @@ from fastapi.responses import HTMLResponse, Response
 from fastapi.templating import Jinja2Templates
 
 from app.config import Settings
+from app.detection.device_profiles import build_device_inventory
 from app.scheduler.health import HEALTH
 from app.scheduler.rotating_scanner import RotatingScanner
 from app.storage.repository import Repository
@@ -85,11 +86,17 @@ async def health(request: Request) -> dict[str, object]:
 
 @router.get("/api/rooms")
 async def rooms(request: Request) -> list[dict[str, object]]:
-    latest = {room["room_id"]: room for room in _repository(request).latest_rooms()}
-    return [
-        latest.get(room_id, {"room_id": room_id, "status": "数据不足"})
-        for room_id in _room_ids(request)
-    ]
+    repository = _repository(request)
+    latest = {room["room_id"]: room for room in repository.latest_rooms()}
+    scan_statuses = repository.latest_scan_statuses()
+    response: list[dict[str, object]] = []
+    for room_id in _room_ids(request):
+        room = latest.get(room_id, {"room_id": room_id, "status": "数据不足"})
+        samples = repository.room_samples(room_id)
+        room["devices"] = build_device_inventory(samples, repository.allowed_devices(room_id))
+        room["scan_status"] = scan_statuses.get(room_id)
+        response.append(room)
+    return response
 
 
 @router.get("/api/rooms/{room_id}")
@@ -100,6 +107,10 @@ async def room_detail(request: Request, room_id: str) -> dict[str, object]:
         raise HTTPException(404, "该房间尚无样本")
     sample["events"] = repository.recent_events(limit=100, room_id=room_id)
     sample["allowlist"] = repository.allowed_devices(room_id)
+    sample["devices"] = build_device_inventory(
+        repository.room_samples(room_id), sample["allowlist"]
+    )
+    sample["scan_status"] = repository.latest_scan_statuses().get(room_id)
     return sample
 
 
@@ -123,7 +134,15 @@ async def review_event(request: Request, event_id: int, body: ReviewRequest) -> 
 async def update_allowlist(request: Request, body: AllowlistRequest) -> dict[str, bool]:
     if body.room_id not in _room_ids(request):
         raise HTTPException(400, "未知房间")
-    if body.label not in {"海信电视", "酒店固定设备", "允许设备", "未知设备"}:
+    if body.label not in {
+        "海信电视",
+        "手机",
+        "平板",
+        "个人电脑",
+        "酒店固定设备",
+        "允许设备",
+        "未知设备",
+    }:
         raise HTTPException(400, "无效设备标签")
     _repository(request).upsert_allowlist(body.room_id, body.device_id, body.label, body.note)
     return {"updated": True}
