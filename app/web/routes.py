@@ -12,7 +12,12 @@ from app.detection.device_profiles import build_device_inventory
 from app.scheduler.health import HEALTH
 from app.scheduler.rotating_scanner import RotatingScanner
 from app.storage.repository import Repository
-from app.web.schemas import AllowlistRequest, ClearRequest, ReviewRequest
+from app.web.schemas import (
+    AllowlistRequest,
+    ClearRequest,
+    ReportedDeviceRequest,
+    ReviewRequest,
+)
 
 router = APIRouter()
 
@@ -94,6 +99,7 @@ async def rooms(request: Request) -> list[dict[str, object]]:
         room = latest.get(room_id, {"room_id": room_id, "status": "数据不足"})
         samples = repository.room_samples(room_id)
         room["devices"] = build_device_inventory(samples, repository.allowed_devices(room_id))
+        room["reported_devices"] = repository.reported_devices(room_id)
         room["scan_status"] = scan_statuses.get(room_id)
         response.append(room)
     return response
@@ -101,15 +107,23 @@ async def rooms(request: Request) -> list[dict[str, object]]:
 
 @router.get("/api/rooms/{room_id}")
 async def room_detail(request: Request, room_id: str) -> dict[str, object]:
+    if room_id not in _room_ids(request):
+        raise HTTPException(404, "未知房间")
     repository = _repository(request)
     sample = repository.latest_sample(room_id)
     if sample is None:
-        raise HTTPException(404, "该房间尚无样本")
+        sample = {
+            "room_id": room_id,
+            "captured_at": None,
+            "reachable": False,
+            "raw_source": "尚无自动样本",
+        }
     sample["events"] = repository.recent_events(limit=100, room_id=room_id)
     sample["allowlist"] = repository.allowed_devices(room_id)
     sample["devices"] = build_device_inventory(
         repository.room_samples(room_id), sample["allowlist"]
     )
+    sample["reported_devices"] = repository.reported_devices(room_id)
     sample["scan_status"] = repository.latest_scan_statuses().get(room_id)
     return sample
 
@@ -128,6 +142,39 @@ async def review_event(request: Request, event_id: int, body: ReviewRequest) -> 
     if not updated:
         raise HTTPException(404, "事件不存在")
     return {"updated": True}
+
+
+@router.post("/api/reported-devices")
+async def add_reported_device(
+    request: Request, body: ReportedDeviceRequest
+) -> dict[str, int]:
+    if body.room_id not in _room_ids(request):
+        raise HTTPException(400, "未知房间")
+    device_id = _repository(request).add_reported_device(
+        body.room_id, body.label, body.device_type, body.usage_state, body.note
+    )
+    return {"id": device_id}
+
+
+@router.put("/api/reported-devices/{device_id}")
+async def update_reported_device(
+    request: Request, device_id: int, body: ReportedDeviceRequest
+) -> dict[str, bool]:
+    if body.room_id not in _room_ids(request):
+        raise HTTPException(400, "未知房间")
+    updated = _repository(request).update_reported_device(
+        device_id, body.room_id, body.label, body.device_type, body.usage_state, body.note
+    )
+    if not updated:
+        raise HTTPException(404, "现场确认设备不存在")
+    return {"updated": True}
+
+
+@router.delete("/api/reported-devices/{device_id}")
+async def delete_reported_device(request: Request, device_id: int) -> dict[str, bool]:
+    if not _repository(request).delete_reported_device(device_id):
+        raise HTTPException(404, "现场确认设备不存在")
+    return {"deleted": True}
 
 
 @router.post("/api/allowlist")
