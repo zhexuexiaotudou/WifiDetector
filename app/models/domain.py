@@ -96,6 +96,8 @@ class RouterCapabilities:
     json_api: bool = False
     html_scraping: bool = False
     login_automation: bool = False
+    local_neighbor_discovery: bool = False
+    ssdp_discovery: bool = False
 
 
 @dataclass(slots=True)

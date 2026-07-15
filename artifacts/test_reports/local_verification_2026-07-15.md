@@ -5,6 +5,8 @@
 - Ruff：通过，0 个问题。
 - MyPy strict：通过，40 个源码文件 0 个问题。
 - Pytest：19 passed，1 个上游 TestClient 弃用提示。
+- GitHub Actions：PR #1 的 CI run `29396070455` 全绿，依赖安装、Ruff、MyPy 与 Pytest 全部通过。
+- 打包：`dorm_monitor-0.1.0-py3-none-any.whl` 构建成功，包含 5 个模板、3 个静态资源和 `dorm-monitor` 控制台入口。
 
 ## Mock 闭环
 

@@ -1,0 +1,24 @@
+app:
+  dashboard_host: "127.0.0.1"
+  dashboard_port: 8765
+  retention_hours: 72
+  scheduler_enabled: false
+  mock_mode: false
+  field_test_mode: true
+  field_data_source: "local_pc"
+  local_ping_sweep: true
+  per_room_connect_timeout_seconds: 18
+  per_room_scan_timeout_seconds: 20
+  inter_room_pause_seconds: 0
+  cycle_pause_seconds: 5
+  max_sample_age_minutes: 6
+  unknown_persistent_minutes: 10
+
+rooms:
+  - room_id: "2312"
+    ssid: "CMCC-2312"
+    wifi_profile: "CMCC-2312"
+    router_url: "http://192.168.1.1"
+    expected_bssid: null
+    credential_key: "h10e31_shared_admin"
+    enabled: true

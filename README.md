@@ -43,6 +43,8 @@ Set-ExecutionPolicy -Scope Process Bypass
 
 真实凭据只能通过 Windows 已保存 Wi‑Fi profile、本机 `.env`、Credential Manager 或运行时交互输入提供。详见 [现场部署](docs/FIELD_SETUP.md) 与 [路由器发现](docs/ROUTER_DISCOVERY.md)。
 
+已授权的 `2312` 单房间现场测试使用 `config/rooms.2312.field.yaml`。它不需要路由器管理账号，只从当前电脑执行单次 ICMP/ARP 邻居发现和 SSDP/UPnP 媒体设备发现；不读取客户端全表、逐设备流量或电视亮屏状态。它不改变正式八房间目标，也不代表八房间全部验收。
+
 ## 能力边界
 
 能较可靠发现的是授权网关所列的新客户端、持续在线及可用的客户端流量，以及网关明确提供的 IPTV/STB/HDMI 业务字段。无法可靠发现 4G/5G 但未连接房间 Wi‑Fi 的设备、完全离线使用、无网络流量的本地视频、短于完整轮询周期的瞬时连接，或没有网关证据的 HDMI 亮屏状态。
@@ -58,3 +60,9 @@ Set-ExecutionPolicy -Scope Process Bypass
 ```
 
 当前阶段与现场阻塞见 [IMPLEMENTATION_STATUS.md](IMPLEMENTATION_STATUS.md) 和 [NEEDS_GPT_REVIEW.md](NEEDS_GPT_REVIEW.md)。
+
+进一步资料：
+
+- [架构、API 与数据模型](docs/ARCHITECTURE.md)
+- [命令、环境变量与运维](docs/OPERATOR_GUIDE.md)
+- [隐私、安全与能力边界](docs/PRIVACY_AND_LIMITATIONS.md)

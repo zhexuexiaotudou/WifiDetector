@@ -38,6 +38,20 @@ def test_explicit_iptv_state_is_high_confidence() -> None:
     assert event.confidence == 0.95
 
 
+def test_pc_local_media_advertisement_is_only_visibility_evidence() -> None:
+    snapshot = RouterSnapshot(
+        room_id="2312",
+        clients=[
+            ClientSnapshot(mac="ssdp:device-1", connection_type="ssdp-media-device")
+        ],
+        raw_source="pc-local",
+    )
+    events = detect_events(snapshot, {"ssdp:device-1": "dev_media"}, {}, None)
+    assert [event.event_type for event in events] == ["media_device_visible"]
+    assert events[0].confidence < 0.7
+    assert "不等于亮屏" in "".join(events[0].limitations)
+
+
 def test_baseline_summary() -> None:
     result = summarize_baseline([1, 2, 3, 4, 5])
     assert result["median"] == 3

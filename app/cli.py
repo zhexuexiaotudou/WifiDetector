@@ -9,10 +9,17 @@ import tracemalloc
 from datetime import date
 from typing import Any
 
-from app.config import ROOM_IDS, database_path, load_settings, project_root
+from app.config import (
+    database_path,
+    load_environment,
+    load_settings,
+    log_level,
+    project_root,
+)
 from app.logging_config import configure_logging
 from app.routers.discovery import discover_router
 from app.routers.h10e31 import H10e31Adapter
+from app.routers.local_pc import LocalPcAdapter
 from app.scheduler.rotating_scanner import RotatingScanner
 from app.storage.export import export_daily
 from app.storage.repository import Repository
@@ -27,7 +34,7 @@ def parser() -> argparse.ArgumentParser:
     commands.add_parser("profiles")
     for name in ("connect-test", "discover", "probe", "calibrate", "scan-once"):
         item = commands.add_parser(name)
-        item.add_argument("--room", required=True, choices=ROOM_IDS)
+        item.add_argument("--room", required=True)
     commands.add_parser("scan-cycle")
     commands.add_parser("run")
     export = commands.add_parser("export")
@@ -47,8 +54,14 @@ async def execute(args: argparse.Namespace) -> Any:
     if args.command == "profiles":
         manager = WindowsWifiManager()
         return {"profiles": await manager.list_profiles()}
+    room = None
+    if hasattr(args, "room"):
+        room = next((item for item in settings.rooms if item.room_id == args.room), None)
+        if room is None:
+            configured = ", ".join(item.room_id for item in settings.rooms)
+            raise ValueError(f"房间 {args.room} 不在当前配置中；已配置：{configured}")
     if args.command == "connect-test":
-        room = next(room for room in settings.rooms if room.room_id == args.room)
+        assert room is not None
         manager = WindowsWifiManager(settings.app.per_room_connect_timeout_seconds)
         result = await manager.connect(room.wifi_profile, room.ssid, room.expected_bssid)
         return {
@@ -59,7 +72,7 @@ async def execute(args: argparse.Namespace) -> Any:
             "gateway": result.gateway,
         }
     if args.command == "discover":
-        room = next(room for room in settings.rooms if room.room_id == args.room)
+        assert room is not None
         manager = WindowsWifiManager(settings.app.per_room_connect_timeout_seconds)
         result = await manager.connect(room.wifi_profile, room.ssid, room.expected_bssid)
         if not result.ok:
@@ -69,15 +82,27 @@ async def execute(args: argparse.Namespace) -> Any:
         )
         return {"sanitized_evidence": str(output)}
     if args.command == "probe":
-        capabilities = await H10e31Adapter(args.room).probe()
+        assert room is not None
+        if settings.app.field_data_source == "local_pc":
+            adapter = LocalPcAdapter(
+                args.room,
+                room.ssid,
+                ping_sweep=settings.app.local_ping_sweep,
+            )
+            capabilities = await adapter.probe()
+            status = "电脑本地发现：局部邻居与 SSDP 证据"
+        else:
+            capabilities = await H10e31Adapter(args.room).probe()
+            status = "等待真实脱敏发现证据"
         return {
             "room_id": args.room,
             "verified_capabilities": {
                 key: getattr(capabilities, key) for key in capabilities.__dataclass_fields__
             },
-            "status": "等待真实脱敏发现证据",
+            "status": status,
         }
     if args.command == "calibrate":
+        assert room is not None
         return {
             "room_id": args.room,
             "status": "需要授权现场人工向导",
@@ -87,6 +112,7 @@ async def execute(args: argparse.Namespace) -> Any:
         }
     scanner = RotatingScanner(settings, repository)
     if args.command == "scan-once":
+        assert room is not None
         return {"room_id": args.room, "event_ids": await scanner.scan_room(args.room, 1)}
     if args.command == "scan-cycle":
         return await scanner.scan_cycle()
@@ -155,7 +181,14 @@ async def execute(args: argparse.Namespace) -> Any:
         import uvicorn
 
         config = settings.app
-        uvicorn.run("app.main:app", host=config.dashboard_host, port=config.dashboard_port)
+        server = uvicorn.Server(
+            uvicorn.Config(
+                "app.main:app",
+                host=config.dashboard_host,
+                port=config.dashboard_port,
+            )
+        )
+        await server.serve()
         return {"status": "stopped"}
     raise RuntimeError("未知命令")
 
@@ -164,9 +197,13 @@ def main() -> None:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
     args = parser().parse_args()
-    configure_logging(log_dir=project_root() / "logs")
+    load_environment()
+    configure_logging(level=log_level(), log_dir=project_root() / "logs")
     try:
         result = asyncio.run(execute(args))
+    except KeyboardInterrupt:
+        print(json.dumps({"status": "stopped"}, ensure_ascii=False, indent=2))
+        return
     except (RuntimeError, ValueError, OSError) as exc:
         print(json.dumps({"ok": False, "error": str(exc)}, ensure_ascii=False, indent=2))
         sys.exit(2)

@@ -1,5 +1,38 @@
 # 架构
 
-系统沿一条顺序链路运行：Windows Wi‑Fi 管理器验证目标 SSID/BSSID、IPv4 和 `192.168.1.1` 网关；每个房间创建新的短生命周期 RouterAdapter；适配器输出标准化 RouterSnapshot；安全层在持久化前将 MAC 转为本机加盐 HMAC 设备 ID；透明规则引擎产生带理由、限制与证据字段的事件；SQLite 以 WAL 模式存储；FastAPI 只监听回环地址并展示人工复核面板。
+## 数据流与隔离
+
+系统沿一条顺序链路运行：Windows Wi‑Fi 管理器验证目标 SSID/BSSID、IPv4 和 `192.168.1.1` 网关；每个房间创建新的短生命周期 `RouterAdapter`；适配器输出标准化 `RouterSnapshot`；安全层在持久化前将 MAC 转为本机加盐 HMAC 设备 ID；透明规则引擎产生带理由、限制与证据字段的事件；SQLite 以 WAL 模式存储；FastAPI 只监听回环地址并展示人工复核面板。
 
 八个房间绝不并行访问，因为它们共享相同管理地址但位于彼此隔离的 LAN。真实 H10e-31 适配器必须由脱敏后的现场证据驱动。在证据到位之前，所有能力标志均为假。
+
+`local_pc` 是无网关权限时的降级数据源。它先验证当前 SSID、IPv4 与默认网关，再对本机 `/24` 做单次 ICMP 邻居刷新，并收集 ARP 与 SSDP/UPnP 广播。原始 IP、MAC、USN 和 SSDP 头只在内存中用于关联；持久化前统一转换为本机 HMAC 设备 ID，仅保留 `icmp-neighbor`、`ssdp-device` 或 `ssdp-media-device` 证据类别。该路径不宣称具备完整客户端列表或逐设备流量能力。
+
+## 本地 HTTP 接口
+
+服务默认仅监听 `127.0.0.1:8765`。
+
+| 方法 | 路径 | 用途 |
+|---|---|---|
+| GET | `/`、`/rooms/{room_id}`、`/events`、`/settings` | 本地人工复核页面 |
+| GET | `/api/health` | 扫描进度、事件数与运行模式 |
+| GET | `/api/rooms`、`/api/rooms/{room_id}` | 八房间摘要与单房间详情 |
+| GET | `/api/events` | 最近事件，可按 `room_id` 筛选 |
+| POST | `/api/events/{event_id}/review` | 写入人工复核状态和备注 |
+| POST | `/api/allowlist` | 更新房间设备标签 |
+| POST | `/api/scan-cycle` | 触发一轮顺序扫描；并发请求返回 409 |
+| POST | `/api/purge` | 按配置保留期清理样本与事件 |
+| POST | `/api/clear` | 使用确认短语清空本地监测数据 |
+
+接口是本机面板的内部契约，不提供公网鉴权或跨网络调用能力。
+
+## SQLite 数据模型
+
+| 表 | 作用 | 关键字段与约束 |
+|---|---|---|
+| `samples` | 每次房间快照 | 房间、UTC 采集时间、可达性和已脱敏 JSON；按房间/时间索引 |
+| `events` | 透明规则事件与人工复核 | 类型、级别、置信度、理由/限制/证据、复核状态、去重键、出现次数和开闭状态 |
+| `allowlist` | 房间内匿名设备标签 | `(room_id, device_id)` 联合主键；不存完整 MAC |
+| `runtime_state` | 可扩展的本地运行状态 | 字符串键值；当前不承载敏感凭据 |
+
+所有连接启用 WAL 和外键检查。默认保留期为 72 小时；`purge` 只清理过期样本与事件，`clear` 需要固定中文确认短语。

@@ -34,7 +34,24 @@ def detect_events(
             continue
         label = allowlist.get(device_id)
         active = bool((client.rx_rate_bps or 0) + (client.tx_rate_bps or 0))
+        local_media = client.connection_type == "ssdp-media-device"
         if not label:
+            if local_media:
+                events.append(
+                    DetectionEvent(
+                        room_id=snapshot.room_id,
+                        event_type="media_device_visible",
+                        severity=Severity.LOW,
+                        confidence=0.62,
+                        reasons=["设备主动广播 SSDP/DIAL/UPnP 媒体服务"],
+                        limitations=[
+                            "媒体服务设备不一定是电视",
+                            "设备可见不等于亮屏、播放或有人观看",
+                        ],
+                        evidence={"device_id": device_id, "source": "pc-local-ssdp"},
+                    )
+                )
+                continue
             confidence = 0.72 if active else 0.55
             if not active and seen_counts.get(device_id, 1) < 2:
                 continue
@@ -52,18 +69,31 @@ def detect_events(
                     evidence={"device_id": device_id, "active": active},
                 )
             )
-        elif label == "海信电视" and active and seen_counts.get(device_id, 1) >= 2:
-            events.append(
-                DetectionEvent(
-                    room_id=snapshot.room_id,
-                    event_type="smart_tv_active",
-                    severity=Severity.MEDIUM,
-                    confidence=0.75,
-                    reasons=["人工标记的海信电视客户端存在联网流量"],
-                    limitations=["联网活跃不等于电视亮屏或有人观看"],
-                    evidence={"device_id": device_id},
+        elif label == "海信电视":
+            if active and seen_counts.get(device_id, 1) >= 2:
+                events.append(
+                    DetectionEvent(
+                        room_id=snapshot.room_id,
+                        event_type="smart_tv_active",
+                        severity=Severity.MEDIUM,
+                        confidence=0.75,
+                        reasons=["人工标记的海信电视客户端存在联网流量"],
+                        limitations=["联网活跃不等于电视亮屏或有人观看"],
+                        evidence={"device_id": device_id},
+                    )
                 )
-            )
+            elif local_media:
+                events.append(
+                    DetectionEvent(
+                        room_id=snapshot.room_id,
+                        event_type="smart_tv_visible",
+                        severity=Severity.LOW,
+                        confidence=0.65,
+                        reasons=["人工标记的电视正在广播媒体服务"],
+                        limitations=["只能确认局域网可见，不能确认亮屏、播放或观看人员"],
+                        evidence={"device_id": device_id, "source": "pc-local-ssdp"},
+                    )
+                )
     if monitor_ipv4 and not monitor_identified:
         events.append(
             DetectionEvent(

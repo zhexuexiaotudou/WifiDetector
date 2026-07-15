@@ -3,6 +3,7 @@ from pathlib import Path
 import pytest
 
 from app.config import load_settings
+from app.routers.local_pc import LocalPcAdapter
 from app.scheduler.health import HEALTH
 from app.scheduler.rotating_scanner import RotatingScanner
 from app.storage.repository import Repository
@@ -45,3 +46,10 @@ async def test_accelerated_soak(tmp_path: Path) -> None:
     with repository.connection() as db:
         integrity = db.execute("PRAGMA integrity_check").fetchone()[0]
     assert integrity == "ok"
+
+
+def test_field_mode_never_falls_back_to_mock_data(tmp_path: Path) -> None:
+    settings = load_settings(Path("config/rooms.2312.field.yaml"))
+    repository = Repository(tmp_path / "field.db")
+    scanner = RotatingScanner(settings, repository, salt_file=tmp_path / "salt")
+    assert isinstance(scanner.adapter_factory("2312", 1), LocalPcAdapter)
