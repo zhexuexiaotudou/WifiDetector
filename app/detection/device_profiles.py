@@ -46,9 +46,11 @@ def derive_type_hint(client: ClientSnapshot) -> dict[str, object]:
         }
     if connection_type == "ssdp-media-device":
         return {
-            "type_hint": "电视/媒体设备",
-            "type_hint_confidence": 0.82,
-            "type_hint_reason": "主动广播 MediaRenderer、AVTransport 或 DIAL 类媒体服务",
+            "type_hint": "媒体服务端点",
+            "type_hint_confidence": 0.60,
+            "type_hint_reason": (
+                "发现媒体服务；可能来自待机电视、机顶盒或电脑，不能据此确定设备类型"
+            ),
         }
     if connection_type == "icmp-neighbor":
         return {
@@ -72,9 +74,9 @@ def _automatic_type(client: dict[str, Any]) -> tuple[str, float, str]:
     connection_type = client.get("connection_type")
     if connection_type == "ssdp-media-device":
         return (
-            "电视/媒体设备",
-            0.82,
-            "主动广播 MediaRenderer、AVTransport 或 DIAL 类媒体服务",
+            "媒体服务端点",
+            0.60,
+            "发现媒体服务；可能来自待机电视、机顶盒或电脑，不能据此确定设备类型",
         )
     if connection_type == "icmp-neighbor":
         return "手机/平板/电脑候选", 0.30, "只有本机邻居可见证据，无法区分个人终端类型"

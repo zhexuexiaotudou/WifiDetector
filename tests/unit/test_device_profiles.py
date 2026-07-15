@@ -2,12 +2,13 @@ from app.detection.device_profiles import build_device_inventory, derive_type_hi
 from app.models.domain import ClientSnapshot
 
 
-def test_media_broadcast_is_a_tv_candidate_not_usage_proof() -> None:
+def test_media_broadcast_is_a_media_endpoint_not_a_tv_conclusion() -> None:
     hint = derive_type_hint(
         ClientSnapshot(mac="opaque", connection_type="ssdp-media-device")
     )
-    assert hint["type_hint"] == "电视/媒体设备"
-    assert hint["type_hint_confidence"] == 0.82
+    assert hint["type_hint"] == "媒体服务端点"
+    assert hint["type_hint_confidence"] == 0.60
+    assert "待机电视、机顶盒或电脑" in str(hint["type_hint_reason"])
 
 
 def test_inventory_aggregates_history_and_keeps_pc_local_usage_unknown() -> None:
@@ -18,8 +19,8 @@ def test_inventory_aggregates_history_and_keeps_pc_local_usage_unknown() -> None
                 {
                     "device_id": "dev_0123456789abcdef",
                     "connection_type": "ssdp-media-device",
-                    "type_hint": "电视/媒体设备",
-                    "type_hint_confidence": 0.82,
+                    "type_hint": "媒体服务端点",
+                    "type_hint_confidence": 0.60,
                     "type_hint_reason": "媒体服务广播",
                     "is_monitor_pc": False,
                 }
@@ -31,8 +32,8 @@ def test_inventory_aggregates_history_and_keeps_pc_local_usage_unknown() -> None
                 {
                     "device_id": "dev_0123456789abcdef",
                     "connection_type": "ssdp-media-device",
-                    "type_hint": "电视/媒体设备",
-                    "type_hint_confidence": 0.82,
+                    "type_hint": "媒体服务端点",
+                    "type_hint_confidence": 0.60,
                     "type_hint_reason": "媒体服务广播",
                     "is_monitor_pc": False,
                 }
@@ -40,7 +41,7 @@ def test_inventory_aggregates_history_and_keeps_pc_local_usage_unknown() -> None
         },
     ]
     device = build_device_inventory(samples, {})[0]
-    assert device["probable_type"] == "电视/媒体设备"
+    assert device["probable_type"] == "媒体服务端点"
     assert device["activity_label"] == "媒体服务可见，使用未知"
     assert device["observed_samples"] == 2
     assert device["visible_span_seconds"] == 180

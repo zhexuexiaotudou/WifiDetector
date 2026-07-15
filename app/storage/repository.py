@@ -76,6 +76,17 @@ class Repository:
                     ok INTEGER NOT NULL,
                     error_code TEXT
                 );
+                CREATE TABLE IF NOT EXISTS reported_devices (
+                    id INTEGER PRIMARY KEY,
+                    room_id TEXT NOT NULL,
+                    label TEXT NOT NULL,
+                    device_type TEXT NOT NULL,
+                    usage_state TEXT NOT NULL,
+                    note TEXT NOT NULL DEFAULT '',
+                    updated_at TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_reported_devices_room
+                    ON reported_devices(room_id, id);
                 """
             )
             self._migrate_events(db)
@@ -270,6 +281,84 @@ class Repository:
                 "SELECT device_id,label FROM allowlist WHERE room_id=?", (room_id,)
             ).fetchall()
         return {str(row["device_id"]): str(row["label"]) for row in rows}
+
+    def add_reported_device(
+        self,
+        room_id: str,
+        label: str,
+        device_type: str,
+        usage_state: str,
+        note: str = "",
+    ) -> int:
+        with self.connection() as db:
+            cursor = db.execute(
+                """INSERT INTO reported_devices
+                (room_id,label,device_type,usage_state,note,updated_at)
+                VALUES(?,?,?,?,?,?)""",
+                (
+                    room_id,
+                    label,
+                    device_type,
+                    usage_state,
+                    note,
+                    datetime.now(UTC).isoformat(),
+                ),
+            )
+            row_id = cursor.lastrowid
+            if row_id is None:
+                raise RuntimeError("SQLite did not return a reported device id")
+            return row_id
+
+    def update_reported_device(
+        self,
+        device_id: int,
+        room_id: str,
+        label: str,
+        device_type: str,
+        usage_state: str,
+        note: str = "",
+    ) -> bool:
+        with self.connection() as db:
+            cursor = db.execute(
+                """UPDATE reported_devices SET room_id=?,label=?,device_type=?,
+                usage_state=?,note=?,updated_at=? WHERE id=?""",
+                (
+                    room_id,
+                    label,
+                    device_type,
+                    usage_state,
+                    note,
+                    datetime.now(UTC).isoformat(),
+                    device_id,
+                ),
+            )
+            return cursor.rowcount == 1
+
+    def delete_reported_device(self, device_id: int) -> bool:
+        with self.connection() as db:
+            cursor = db.execute("DELETE FROM reported_devices WHERE id=?", (device_id,))
+            return cursor.rowcount == 1
+
+    def reported_devices(self, room_id: str) -> list[dict[str, object]]:
+        with self.connection() as db:
+            rows = db.execute(
+                """SELECT id,room_id,label,device_type,usage_state,note,updated_at
+                FROM reported_devices WHERE room_id=? ORDER BY id""",
+                (room_id,),
+            ).fetchall()
+        return [
+            {
+                "id": int(row["id"]),
+                "room_id": str(row["room_id"]),
+                "label": str(row["label"]),
+                "device_type": str(row["device_type"]),
+                "usage_state": str(row["usage_state"]),
+                "note": str(row["note"]),
+                "updated_at": str(row["updated_at"]),
+                "source": "现场确认",
+            }
+            for row in rows
+        ]
 
     def review_event(self, event_id: int, status: str, note: str) -> bool:
         allowed = {"已核实", "误报", "无法确认"}

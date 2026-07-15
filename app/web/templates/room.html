@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}房间 {{ room_id }} · 宿舍夜间监测{% endblock %}
 {% block content %}
-<section class="hero compact"><div><p class="eyebrow">ROOM {{ room_id }}</p><h1>房间 {{ room_id }} 设备台账</h1><p>查看每台匿名设备的出现历史、联网使用迹象、类型概率与判断依据。</p></div><a class="secondary" href="/">← 返回房间总览</a></section>
+<section class="hero compact"><div><p class="eyebrow">ROOM {{ room_id }}</p><h1>房间 {{ room_id }} 设备台账</h1><p>先看人工确认的真实设备与状态，再把电脑可见网络信号作为辅助证据。</p></div><a class="secondary" href="/">← 返回房间总览</a></section>
 <div id="roomDetail" data-room="{{ room_id }}"><section class="device-loading"><span></span><span></span><span></span></section></div>
 {% endblock %}

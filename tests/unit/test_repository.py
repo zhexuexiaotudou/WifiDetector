@@ -55,3 +55,19 @@ def test_latest_scan_status_exposes_room_failure_without_sensitive_detail(tmp_pa
     status = repository.latest_scan_statuses()["2301"]
     assert status["ok"] is False
     assert status["error_code"] == "wifi_profile_missing"
+
+
+def test_reported_device_crud_is_separate_from_automatic_samples(tmp_path: Path) -> None:
+    repository = Repository(tmp_path / "data.db")
+    device_id = repository.add_reported_device(
+        "2312", "电脑 1", "个人电脑", "已连接（使用未知）"
+    )
+    devices = repository.reported_devices("2312")
+    assert devices[0]["id"] == device_id
+    assert devices[0]["source"] == "现场确认"
+    assert repository.update_reported_device(
+        device_id, "2312", "电脑 1", "个人电脑", "使用中", "现场复核"
+    )
+    assert repository.reported_devices("2312")[0]["usage_state"] == "使用中"
+    assert repository.delete_reported_device(device_id)
+    assert repository.reported_devices("2312") == []

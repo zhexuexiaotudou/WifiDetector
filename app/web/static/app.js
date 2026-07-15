@@ -64,19 +64,31 @@ function deviceRow(device, compact = false) {
   </div>`;
 }
 
+function reportedRow(device, compact = false) {
+  const connected = ["已连接（使用未知）", "使用中", "待机"].includes(device.usage_state);
+  return `<div class="reported-row ${compact ? "compact" : ""}">
+    <span class="presence ${connected ? "online" : "offline"}"></span>
+    <strong>${esc(device.label)}</strong>
+    <span>${esc(device.device_type)}</span>
+    <b>${esc(device.usage_state)}</b>
+  </div>`;
+}
+
 function roomCard(room) {
   const devices = (room.devices || []).filter((device) => !device.is_monitor_pc);
+  const reported = room.reported_devices || [];
   const current = devices.filter((device) => device.currently_visible);
-  const active = current.filter((device) => device.activity_label.includes("活跃"));
-  const televisions = devices.filter((device) => device.probable_type.includes("电视"));
+  const connected = reported.filter((device) => ["已连接（使用未知）", "使用中", "待机"].includes(device.usage_state));
   const sampled = Boolean(room.captured_at);
-  const preview = devices.slice(0, 3).map((device) => deviceRow(device, true)).join("");
-  const remainder = devices.length > 3 ? `<p class="more-devices">另有 ${devices.length - 3} 台历史设备</p>` : "";
-  const empty = `<div class="room-empty"><b>${esc(scanIssue(room.scan_status, sampled))}</b><span>运行扫描后，这里会按匿名设备逐条展示。</span></div>`;
+  const reportedPreview = reported.slice(0, 4).map((device) => reportedRow(device, true)).join("");
+  const signalPreview = devices.slice(0, 2).map((device) => deviceRow(device, true)).join("");
+  const reportedEmpty = `<div class="room-empty"><b>尚无现场确认台账</b><span>进入房间后可录入已知设备与真实状态。</span></div>`;
+  const signalEmpty = `<div class="room-empty"><b>${esc(scanIssue(room.scan_status, sampled))}</b><span>电脑端没有看到可识别的网络信号。</span></div>`;
   return `<article class="room-card ${sampled ? "sampled" : "unsampled"}">
     <header class="room-card-head"><div><span class="room-label">ROOM</span><h3>${esc(room.room_id)}</h3></div><span class="status ${sampled ? "ok" : "pending"}">${sampled ? "已采样" : "未采样"}</span></header>
-    <div class="room-stats"><span><strong>${current.length}</strong> 本轮可见</span><span><strong>${active.length}</strong> 联网活跃</span><span><strong>${televisions.length}</strong> 电视候选</span></div>
-    <div class="device-preview">${preview || empty}${remainder}</div>
+    <div class="room-stats"><span><strong>${reported.length}</strong> 现场确认</span><span><strong>${connected.length}</strong> 已连接/待机</span><span><strong>${current.length}</strong> 电脑可见信号</span></div>
+    <div class="inventory-block"><small>现场确认 · 可作为真实台账</small><div class="device-preview">${reportedPreview || reportedEmpty}</div></div>
+    <div class="inventory-block signal-block"><small>自动发现 · 覆盖不完整</small><div class="device-preview">${signalPreview || signalEmpty}</div></div>
     <footer class="room-card-foot"><span>${sampled ? `更新 ${time(room.captured_at)}` : esc(scanIssue(room.scan_status, sampled))}</span><a href="/rooms/${esc(room.room_id)}">查看完整台账 →</a></footer>
   </article>`;
 }
@@ -102,11 +114,41 @@ function deviceDetail(device, roomId) {
   const placeholder = device.manual_label ? "" : '<option value="" selected disabled>选择人工类型</option>';
   return `<article class="device-card">
     <header><div class="device-title"><span class="presence ${device.currently_visible ? "online" : "offline"}"></span><div><code>${esc(shortId(device.device_id))}</code><small>${device.currently_visible ? "最新样本可见" : "最新样本未见"}</small></div></div><span class="source-tag">${esc(device.type_source)}</span></header>
-    <div class="device-verdict"><div><span>大概率类型</span><strong>${esc(device.probable_type)}</strong></div><b class="confidence-ring ${confidenceClass(confidence)}" style="--confidence:${Math.round(confidence * 100)}">${Math.round(confidence * 100)}<small>%</small></b></div>
+    <div class="device-verdict"><div><span>信号可能来源</span><strong>${esc(device.probable_type)}</strong></div><b class="confidence-ring ${confidenceClass(confidence)}" style="--confidence:${Math.round(confidence * 100)}">${Math.round(confidence * 100)}<small>%</small></b></div>
     <p class="reason">${esc(device.type_reason)}</p>
     <dl class="device-facts"><div><dt>使用情况</dt><dd>${esc(device.activity_label)} · ${Math.round(Number(device.activity_confidence) * 100)}% 证据强度</dd></div><div><dt>网络速率</dt><dd>${formatRate(device.activity_rate_bps)}</dd></div><div><dt>采样命中</dt><dd>${hitRate}</dd></div><div><dt>可见跨度</dt><dd>${relativeSpan(device.visible_span_seconds)}</dd></div><div><dt>首次出现</dt><dd>${time(device.first_seen)}</dd></div><div><dt>最近出现</dt><dd>${time(device.last_seen)}</dd></div></dl>
     <p class="activity-reason">${esc(device.activity_reason)}</p>
     <div class="classify-control"><label>人工修正类型<select data-device-label="${esc(device.device_id)}">${placeholder}${options}</select></label><button class="tertiary save-label" data-room="${esc(roomId)}" data-device="${esc(device.device_id)}">保存</button></div>
+  </article>`;
+}
+
+function reportedDeviceCard(device, roomId) {
+  const types = ["手机", "平板", "个人电脑", "电视", "其他"];
+  const states = ["已连接（使用未知）", "使用中", "待机", "关闭", "离线", "未知"];
+  const typeOptions = types.map((value) => `<option ${device.device_type === value ? "selected" : ""}>${value}</option>`).join("");
+  const stateOptions = states.map((value) => `<option ${device.usage_state === value ? "selected" : ""}>${value}</option>`).join("");
+  return `<article class="reported-card" data-reported-id="${device.id}">
+    <header><div><span class="source-tag confirmed">现场确认</span><strong>${esc(device.label)}</strong></div><small>更新 ${time(device.updated_at)}</small></header>
+    <div class="reported-form-grid">
+      <label>设备名称<input data-field="label" value="${esc(device.label)}" maxlength="80"></label>
+      <label>设备类型<select data-field="device_type">${typeOptions}</select></label>
+      <label>当前状态<select data-field="usage_state">${stateOptions}</select></label>
+      <label>说明<input data-field="note" value="${esc(device.note || "")}" maxlength="500" placeholder="不记录人员身份"></label>
+    </div>
+    <footer><button class="tertiary save-reported" data-room="${esc(roomId)}">保存状态</button><button class="text-button delete-reported">删除</button></footer>
+  </article>`;
+}
+
+function addReportedForm(roomId) {
+  return `<article class="reported-card add-card" id="addReportedForm">
+    <header><div><span class="source-tag confirmed">新增</span><strong>录入现场确认设备</strong></div><small>人工事实与自动信号分开保存</small></header>
+    <div class="reported-form-grid">
+      <label>设备名称<input data-field="label" maxlength="80" placeholder="例如：电脑 1"></label>
+      <label>设备类型<select data-field="device_type"><option>个人电脑</option><option>手机</option><option>平板</option><option>电视</option><option>其他</option></select></label>
+      <label>当前状态<select data-field="usage_state"><option>已连接（使用未知）</option><option>使用中</option><option>待机</option><option>关闭</option><option>离线</option><option>未知</option></select></label>
+      <label>说明<input data-field="note" maxlength="500" placeholder="可留空"></label>
+    </div>
+    <footer><button class="primary add-reported" data-room="${esc(roomId)}">加入台账</button><span id="reportedStatus"></span></footer>
   </article>`;
 }
 
@@ -116,18 +158,21 @@ async function loadRoom() {
   try {
     const detail = await json(`/api/rooms/${root.dataset.room}`);
     const devices = (detail.devices || []).filter((device) => !device.is_monitor_pc);
+    const reported = detail.reported_devices || [];
     const current = devices.filter((device) => device.currently_visible).length;
-    const active = devices.filter((device) => device.currently_visible && device.activity_label.includes("活跃")).length;
-    const tv = devices.filter((device) => device.probable_type.includes("电视")).length;
+    const connected = reported.filter((device) => ["已连接（使用未知）", "使用中", "待机"].includes(device.usage_state)).length;
+    const inUse = reported.filter((device) => device.usage_state === "使用中").length;
     root.innerHTML = `<section class="room-summary">
-      <article><span>历史设备</span><strong>${devices.length}</strong></article><article><span>本轮可见</span><strong>${current}</strong></article><article><span>联网活跃</span><strong>${active}</strong></article><article><span>电视候选</span><strong>${tv}</strong></article><article class="summary-wide"><span>最新样本</span><strong>${time(detail.captured_at)}</strong><small>${esc(detail.raw_source)} · ${esc(scanIssue(detail.scan_status, Boolean(detail.captured_at)))}</small></article>
+      <article><span>现场确认设备</span><strong>${reported.length}</strong></article><article><span>已连接/待机</span><strong>${connected}</strong></article><article><span>确认使用中</span><strong>${inUse}</strong></article><article><span>电脑可见信号</span><strong>${current}</strong></article><article class="summary-wide"><span>最新自动样本</span><strong>${time(detail.captured_at)}</strong><small>${esc(detail.raw_source)} · ${esc(scanIssue(detail.scan_status, Boolean(detail.captured_at)))}</small></article>
     </section>
-    <section class="section-heading inventory-heading"><div><p class="eyebrow">ANONYMOUS DEVICES</p><h2>设备画像</h2></div><span id="labelStatus">类型概率不代表人员身份</span></section>
-    <section class="device-grid">${devices.map((device) => deviceDetail(device, detail.room_id)).join("") || "<div class=\"room-empty large\"><b>这一房间尚未发现设备</b><span>本机发现可能受到客户端隔离、设备待机或轮询时机影响。</span></div>"}</section>
-    <aside class="evidence-panel"><div><p class="eyebrow">EVIDENCE BOUNDARY</p><h2>这一页能说明什么</h2></div><ul><li>“联网活跃”只根据逐设备速率元数据；本机模式没有该数据时会明确显示使用未知。</li><li>媒体服务广播可提高电视/媒体设备概率，但不能证明亮屏、播放或有人观看。</li><li>手机和平板经常使用随机 MAC；没有可解释标识时，系统不会强行二选一。</li></ul></aside>
+    <section class="section-heading inventory-heading"><div><p class="eyebrow">CONFIRMED INVENTORY</p><h2>现场确认设备</h2></div><span>这里记录人工确认的类型与状态</span></section>
+    <section class="reported-grid">${reported.map((device) => reportedDeviceCard(device, detail.room_id)).join("")}${addReportedForm(detail.room_id)}</section>
+    <section class="section-heading inventory-heading signal-heading"><div><p class="eyebrow">PC-VISIBLE SIGNALS</p><h2>电脑可见信号</h2></div><span id="labelStatus">不能代表完整 Wi‑Fi 客户端列表</span></section>
+    <section class="device-grid">${devices.map((device) => deviceDetail(device, detail.room_id)).join("") || "<div class=\"room-empty large\"><b>这一房间尚未发现网络信号</b><span>这不等于房间没有设备；客户端隔离、防火墙或手机休眠都可能导致漏检。</span></div>"}</section>
+    <aside class="evidence-panel"><div><p class="eyebrow">EVIDENCE BOUNDARY</p><h2>两类信息不要混用</h2></div><ul><li>“现场确认设备”来自人工核对，可记录已连接、关闭或使用中；不会自动绑定人员身份。</li><li>“电脑可见信号”只代表这台电脑收到过响应，可能严重漏掉已连 Wi‑Fi 的电脑和手机。</li><li>MediaRenderer 可能来自待机电视、机顶盒或电脑媒体服务，不能证明电视开机、亮屏或播放。</li></ul></aside>
     <section class="panel events-compact"><h2>最近事件</h2>${detail.events.slice(0, 8).map((event) => `<p><span>${esc(event.event_type)}</span><b>${Math.round(event.confidence * 100)}%</b><small>${time(event.last_seen || event.occurred_at)} · ${esc(event.review_status || "待复核")}</small></p>`).join("") || "<p>暂无事件</p>"}</section>`;
   } catch (_error) {
-    root.innerHTML = `<div class="room-empty large"><b>该房间尚无设备样本</b><span>返回总览运行一轮扫描；如果 Wi‑Fi 配置缺失，总览会显示具体原因。</span><a class="secondary" href="/">返回总览</a></div>`;
+    root.innerHTML = `<div class="room-empty large"><b>房间数据载入失败</b><span>请返回总览后重试。</span><a class="secondary" href="/">返回总览</a></div>`;
   }
 }
 
@@ -154,6 +199,66 @@ async function saveDeviceLabel(button) {
   }
 }
 
+function reportedPayload(card, roomId) {
+  const value = (field) => card.querySelector(`[data-field="${field}"]`).value.trim();
+  return {
+    room_id: roomId,
+    label: value("label"),
+    device_type: value("device_type"),
+    usage_state: value("usage_state"),
+    note: value("note"),
+  };
+}
+
+async function addReportedDevice(button) {
+  const card = button.closest(".reported-card");
+  const payload = reportedPayload(card, button.dataset.room);
+  const status = $("#reportedStatus");
+  if (!payload.label) {
+    status.textContent = "请填写设备名称";
+    return;
+  }
+  button.disabled = true;
+  try {
+    await json("/api/reported-devices", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    await loadRoom();
+  } catch (_error) {
+    status.textContent = "保存失败";
+    button.disabled = false;
+  }
+}
+
+async function saveReportedDevice(button) {
+  const card = button.closest(".reported-card");
+  const payload = reportedPayload(card, button.dataset.room);
+  button.disabled = true;
+  try {
+    await json(`/api/reported-devices/${card.dataset.reportedId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    await loadRoom();
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function deleteReportedDevice(button) {
+  const card = button.closest(".reported-card");
+  button.disabled = true;
+  try {
+    await json(`/api/reported-devices/${card.dataset.reportedId}`, { method: "DELETE" });
+    await loadRoom();
+  } finally {
+    button.disabled = false;
+  }
+}
+
 async function loadEvents() {
   const root = $("#eventList");
   if (!root) return;
@@ -173,6 +278,12 @@ document.addEventListener("DOMContentLoaded", () => {
   document.addEventListener("click", (event) => {
     const button = event.target.closest(".save-label");
     if (button) saveDeviceLabel(button);
+    const addReported = event.target.closest(".add-reported");
+    if (addReported) addReportedDevice(addReported);
+    const saveReported = event.target.closest(".save-reported");
+    if (saveReported) saveReportedDevice(saveReported);
+    const deleteReported = event.target.closest(".delete-reported");
+    if (deleteReported) deleteReportedDevice(deleteReported);
   });
   $("#scanButton")?.addEventListener("click", async (event) => {
     const button = event.currentTarget;
