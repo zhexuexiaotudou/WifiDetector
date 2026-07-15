@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block title %}房间 {{ room_id }} · 宿舍夜间监测{% endblock %}
+{% block content %}
+<section class="hero compact"><div><p class="eyebrow">ROOM DETAIL</p><h1>房间 {{ room_id }}</h1><p>匿名设备、能力证据与待复核事件。</p></div><a class="secondary" href="/">返回总览</a></section>
+<div id="roomDetail" data-room="{{ room_id }}" class="detail-grid"><article class="panel"><h2>载入中</h2></article></div>
+{% endblock %}

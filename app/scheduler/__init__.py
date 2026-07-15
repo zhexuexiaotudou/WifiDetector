@@ -1,0 +1,1 @@
+"""Sequential room scanning."""
